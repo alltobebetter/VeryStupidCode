@@ -251,30 +251,17 @@ function setupEventListeners() {
     
     // AI助手按钮点击事件
     document.getElementById('ai-status').addEventListener('click', () => {
-        showDialog({
-            title: 'AI助手使用方法',
-            message: '选中代码后，在右键菜单中点击"AI 辅助编码"选项，输入您的需求，AI将生成相应代码并插入到合适位置。'
-        });
-    });
-    
-    // 添加AI辅助编码到编辑器的右键菜单
-    editor.addAction({
-        id: 'ai-assistant',
-        label: 'AI 辅助编码',
-        keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyA],
-        contextMenuGroupId: '1_modification',
-        contextMenuOrder: 1.5,
-        run: function(ed) {
-            const selection = ed.getSelection();
-            if (selection && !selection.isEmpty()) {
-                const selectedCode = ed.getModel().getValueInRange(selection);
-                showAiPromptDialog(selection, selectedCode);
-            } else {
-                showDialog({
-                    title: '无法执行',
-                    message: '请先选中要处理的代码'
-                });
-            }
+        // 获取当前选中内容
+        const selection = editor.getSelection();
+        if (selection && !selection.isEmpty()) {
+            const selectedCode = editor.getModel().getValueInRange(selection);
+            showAiPromptDialog(selection, selectedCode);
+        } else {
+            // 无选中内容，提示用户需要选择代码
+            showDialog({
+                title: '请选择代码',
+                message: '请先选中需要AI处理的代码段，然后再点击AI辅助编码。'
+            });
         }
     });
     
@@ -333,23 +320,11 @@ function setupEventListeners() {
         saveFilesToStorage();
     });
     
-    // 添加键盘快捷键监听
+    // 监听键盘快捷键
     document.addEventListener('keydown', (e) => {
         // 如果AI正在处理，阻止编辑操作
         if (window.aiProcessing && 
             !(e.key === 'Escape' || (e.ctrlKey && e.key === 'c'))) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-    }, true);
-    
-    // 阻止在AI处理过程中的鼠标操作
-    document.addEventListener('mousedown', (e) => {
-        if (window.aiProcessing && 
-            !e.target.closest('#dialog-ok') && 
-            !e.target.closest('#dialog-cancel') && 
-            !e.target.closest('#dialog-close')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
@@ -371,18 +346,15 @@ function setupEventListeners() {
    - 支持亮色和暗色两种主题
 
 3. AI 辅助编码
-   - 选中代码后右键，选择"AI 辅助编码"
-   - 在对话框中输入您的需求
-   - 支持代码插入和删除操作
-   - 示例：
-     * "在第3行插入打印语句"
-     * "删除第5-7行的代码"
-     * "在第2行插入一个for循环"
+   - 选中需要修改的代码
+   - 点击底部状态栏中的"AI 辅助编码"按钮
+   - 描述您的需求（例如："优化这段代码"、"增加错误处理"）
+   - 可以要求AI添加解释性注释（例如："添加注释解释这段代码的工作原理"）
+   - AI将返回完整的修改后代码
 
 4. 快捷键
    - Ctrl + N：新建文件
    - Ctrl + W：关闭当前文件
-   - Alt + A：打开AI辅助编码
    - Ctrl + S：保存文件
 
 5. 其他功能
@@ -390,6 +362,7 @@ function setupEventListeners() {
    - 支持代码自动补全
    - 支持多语言切换
    - 文件数据自动保存
+   - 文件下载功能
 
 注意：所有文件数据都保存在浏览器本地存储中，刷新页面不会丢失。`;
 
@@ -1205,7 +1178,7 @@ function registerHTMLCompletionProvider() {
 function showAiPromptDialog(selection, selectedCode) {
     // 创建输入框HTML
     const inputHtml = `
-        <div style="margin-bottom: 10px;">请输入您的需求，可指定操作类型：</div>
+        <div style="margin-bottom: 10px;">请描述您需要AI协助的内容：</div>
         <textarea id="ai-prompt-input" style="width: 100%; height: 80px; padding: 8px; box-sizing: border-box; border: 1px solid ${currentTheme === 'vs' ? '#ccc' : '#3c3c3c'}; border-radius: 3px; background-color: ${currentTheme === 'vs' ? '#fff' : '#1e1e1e'}; color: ${currentTheme === 'vs' ? '#333' : '#ccc'}; font-family: 'JetBrains Mono', monospace; resize: none;"></textarea>
     `;
     
@@ -1223,8 +1196,9 @@ function showAiPromptDialog(selection, selectedCode) {
                 if (prompt) {
                     // 获取原始模型
                     const originalModel = editor.getModel();
+                    const completeCode = originalModel.getValue();
                     
-                    // 设置全局标志和备份当前状态
+                    // 设置全局标志
                     window.aiProcessing = true;
                     
                     // 临时设置编辑器模型为只读
@@ -1237,7 +1211,7 @@ function showAiPromptDialog(selection, selectedCode) {
                     disableUIElementsDuringAIProcessing(true);
                     
                     // 发送给AI处理
-                    processAiRequest(prompt, selectedCode, selection, originalModel);
+                    processAiRequest(prompt, selectedCode, selection, completeCode, originalModel);
                 }
             }
         }
@@ -1257,8 +1231,7 @@ function disableUIElementsDuringAIProcessing(disable) {
     // 获取可以在AI处理过程中禁用的元素
     const elementsToDisable = [
         document.getElementById('new-file-button'),
-        document.getElementById('theme-status'),
-        document.getElementById('language-status')
+        document.getElementById('notification')
     ];
     
     // 禁用/启用这些元素
@@ -1276,28 +1249,58 @@ function disableUIElementsDuringAIProcessing(disable) {
         }
     });
     
-    // 禁用/启用标签栏
-    const tabsContainer = document.getElementById('tabs-container');
-    if (tabsContainer) {
+    // 禁用标签栏的关闭按钮
+    const closeButtons = document.querySelectorAll('.tab-close');
+    if (closeButtons) {
+        closeButtons.forEach(btn => {
+            if (disable) {
+                btn.setAttribute('data-original-style', btn.style.pointerEvents || '');
+                btn.style.pointerEvents = 'none';
+                btn.style.opacity = '0.5';
+            } else {
+                btn.style.pointerEvents = btn.getAttribute('data-original-style') || '';
+                btn.style.opacity = '';
+                btn.removeAttribute('data-original-style');
+            }
+        });
+    }
+    
+    // 为编辑器添加视觉提示，但允许鼠标操作
+    const editorContainer = document.getElementById('editor-container');
+    if (editorContainer) {
         if (disable) {
-            tabsContainer.setAttribute('data-original-style', tabsContainer.style.pointerEvents || '');
-            tabsContainer.style.pointerEvents = 'none';
-            tabsContainer.style.opacity = '0.7';
+            editorContainer.style.position = 'relative';
+            // 移除遮罩层
+            let existingOverlay = document.getElementById('ai-processing-overlay');
+            if (!existingOverlay) {
+                const overlay = document.createElement('div');
+                overlay.id = 'ai-processing-overlay';
+                overlay.style.position = 'absolute';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.right = '0';
+                overlay.style.bottom = '0';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                overlay.style.zIndex = '10';
+                overlay.style.pointerEvents = 'none'; // 允许鼠标操作
+                
+                editorContainer.appendChild(overlay);
+            }
         } else {
-            tabsContainer.style.pointerEvents = tabsContainer.getAttribute('data-original-style') || '';
-            tabsContainer.style.opacity = '';
-            tabsContainer.removeAttribute('data-original-style');
+            const overlay = document.getElementById('ai-processing-overlay');
+            if (overlay) {
+                editorContainer.removeChild(overlay);
+            }
         }
     }
 }
 
 // 处理AI请求
-function processAiRequest(prompt, selectedCode, selection, originalModel) {
-    // 显示加载状态
-    showDialog({
-        title: 'AI处理中',
-        message: '正在处理您的请求，请稍候...'
-    });
+function processAiRequest(prompt, selectedCode, selection, completeCode, originalModel) {
+    // 更新底部状态栏显示为"正在生成"
+    const aiStatusElement = document.getElementById('ai-status');
+    const originalAiStatusText = aiStatusElement.innerHTML;
+    aiStatusElement.innerHTML = '正在生成';
     
     // 获取选中区域的行范围
     const startLine = selection.startLineNumber;
@@ -1309,43 +1312,32 @@ function processAiRequest(prompt, selectedCode, selection, originalModel) {
         messages: [
             {
                 role: "system",
-                content: `你是一个代码助手，你的任务是根据用户的要求对代码进行修改。你可以执行两种操作：插入代码和删除代码。
+                content: `你是一个代码助手。用户将提供完整的代码文件，其中某些部分被标记为"// --- 选中的代码开始 ---"和"// --- 选中的代码结束 ---"。
+用户会告诉你他想要如何修改这部分代码。你的任务是：
+1. 理解用户的需求
+2. 生成完整的修改后代码
+3. 返回修改后的完整代码文件
 
-请使用以下格式回复：
+若用户要求解释代码或添加说明，请使用代码注释来提供解释。根据编程语言选择合适的注释格式：
+- Python: 使用 # 或 """...""" 
+- C/C++: 使用 // 或 /*...*/
+- HTML: 使用 <!--...-->
+- JavaScript: 使用 // 或 /*...*/
 
-1. 对于插入代码，使用：
-INSERT:<行号>
-代码内容
-
-2. 对于删除代码，使用：
-DELETE:<起始行>-<结束行>
-
-例如：
-- 如果用户要求在第3行插入print语句，你应返回：
-INSERT:3
-print("Hello World")
-
-- 如果用户要求删除第5行代码，你应返回：
-DELETE:5-5
-
-- 如果用户要求删除第5到8行代码，你应返回：
-DELETE:5-8
-
-如果需要多个操作，可以组合使用上述格式。请不要包含任何解释或说明，只返回带操作前缀的代码。`
+请直接返回完整的代码，不要包含任何额外的解释或说明。
+不要使用代码块标记（\`\`\`），直接返回代码。`
             },
             {
                 role: "user",
-                content: `我正在编写${currentLanguage}代码，这是我当前的代码：
+                content: `我正在编写${currentLanguage}代码。以下是我的完整代码，我已经标记了我想要修改的部分：
 
-\`\`\`${currentLanguage}
+${completeCode.substring(0, originalModel.getOffsetAt({lineNumber: startLine, column: 1}))}// --- 选中的代码开始 ---
 ${selectedCode}
-\`\`\`
+// --- 选中的代码结束 ---${completeCode.substring(originalModel.getOffsetAt({lineNumber: endLine, column: originalModel.getLineMaxColumn(endLine)}))}
 
-选中代码的起始行是第${startLine}行，结束行是第${endLine}行。
+我想要：${prompt}
 
-我的要求是：${prompt}
-
-请按照INSERT:<行号>或DELETE:<起始行>-<结束行>格式返回，不要有任何解释。`
+请直接返回修改后的完整代码文件，不要包含任何其他解释。`
             }
         ],
         temperature: 0.7
@@ -1367,29 +1359,29 @@ ${selectedCode}
         return response.json();
     })
     .then(data => {
-        // 隐藏加载对话框
-        hideDialog();
-        
         // 提取AI回复
         if (data.choices && data.choices.length > 0) {
             const aiCode = data.choices[0].message.content.trim();
             
-            // 解析并应用AI生成的代码修改
-            processAiCodeOperations(aiCode, originalModel, selection);
+            // 直接替换编辑器内容
+            editor.setValue(aiCode);
         } else {
             throw new Error('未收到有效的AI回复');
         }
     })
     .catch(error => {
         console.error('AI请求错误:', error);
-        hideDialog();
         
+        // 仅在出错时显示提示对话框
         showDialog({
             title: '请求失败',
             message: `AI请求失败：${error.message}`
         });
     })
     .finally(() => {
+        // 恢复状态栏文本
+        aiStatusElement.innerHTML = originalAiStatusText;
+        
         // 无论成功或失败，恢复编辑器状态
         originalModel.updateOptions({ readOnly: false });
         
@@ -1400,171 +1392,4 @@ ${selectedCode}
         window.aiProcessing = false;
         document.body.classList.remove('ai-processing');
     });
-}
-
-// 处理AI代码操作（插入和删除）
-function processAiCodeOperations(aiResponse, model, selection) {
-    try {
-        // 解析AI响应中的操作指令
-        const insertPattern = /^INSERT:(\d+)\s*$/i;
-        const deletePattern = /^DELETE:(\d+)-(\d+)\s*$/i;
-        const lines = aiResponse.split('\n');
-        
-        // 存储操作
-        const operations = [];
-        let currentOperation = null;
-        let currentCode = [];
-        
-        // 解析每一行
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            const insertMatch = line.match(insertPattern);
-            const deleteMatch = line.match(deletePattern);
-            
-            if (insertMatch) {
-                // 如果已经有操作，添加到结果中
-                if (currentOperation && currentOperation.type === 'INSERT' && currentCode.length > 0) {
-                    operations.push({
-                        type: 'INSERT',
-                        lineNumber: currentOperation.lineNumber,
-                        code: currentCode.join('\n')
-                    });
-                    currentCode = [];
-                }
-                
-                // 设置新的插入操作
-                currentOperation = {
-                    type: 'INSERT',
-                    lineNumber: parseInt(insertMatch[1])
-                };
-            } else if (deleteMatch) {
-                // 添加上一个操作（如果有）
-                if (currentOperation && currentOperation.type === 'INSERT' && currentCode.length > 0) {
-                    operations.push({
-                        type: 'INSERT',
-                        lineNumber: currentOperation.lineNumber,
-                        code: currentCode.join('\n')
-                    });
-                    currentCode = [];
-                }
-                
-                // 添加删除操作
-                operations.push({
-                    type: 'DELETE',
-                    startLine: parseInt(deleteMatch[1]),
-                    endLine: parseInt(deleteMatch[2])
-                });
-                
-                // 重置当前操作
-                currentOperation = null;
-            } else if (currentOperation && currentOperation.type === 'INSERT') {
-                // 添加代码行到当前插入操作
-                currentCode.push(line);
-            }
-        }
-        
-        // 添加最后一个插入操作（如果有）
-        if (currentOperation && currentOperation.type === 'INSERT' && currentCode.length > 0) {
-            operations.push({
-                type: 'INSERT',
-                lineNumber: currentOperation.lineNumber,
-                code: currentCode.join('\n')
-            });
-        }
-        
-        // 如果没有解析出操作，尝试作为普通代码处理
-        if (operations.length === 0) {
-            // 清除可能存在的代码块标记
-            let cleanCode = aiResponse
-                .replace(/^```[\w\s]*\n/, '')
-                .replace(/```$/, '')
-                .trim();
-                
-            if (cleanCode) {
-                // 如果没有指定操作，默认插入到选区的开始位置
-                editor.executeEdits('ai-operation', [{
-                    range: {
-                        startLineNumber: selection.startLineNumber,
-                        startColumn: 1,
-                        endLineNumber: selection.startLineNumber,
-                        endColumn: 1
-                    },
-                    text: cleanCode + '\n'
-                }]);
-            }
-        } else {
-            // 先进行删除操作，然后是插入操作，以避免行号变化影响操作
-            const deleteOperations = operations.filter(op => op.type === 'DELETE').sort((a, b) => b.startLine - a.startLine);
-            const insertOperations = operations.filter(op => op.type === 'INSERT').sort((a, b) => b.lineNumber - a.lineNumber);
-            
-            // 收集所有编辑
-            const edits = [];
-            
-            // 处理删除操作
-            for (const op of deleteOperations) {
-                edits.push({
-                    range: {
-                        startLineNumber: op.startLine,
-                        startColumn: 1,
-                        endLineNumber: op.endLine + 1,
-                        endColumn: 1
-                    },
-                    text: ''
-                });
-            }
-            
-            // 处理插入操作
-            for (const op of insertOperations) {
-                edits.push({
-                    range: {
-                        startLineNumber: op.lineNumber,
-                        startColumn: 1,
-                        endLineNumber: op.lineNumber,
-                        endColumn: 1
-                    },
-                    text: op.code + '\n'
-                });
-            }
-            
-            // 应用所有编辑
-            if (edits.length > 0) {
-                editor.executeEdits('ai-operations', edits);
-            }
-        }
-        
-        // 生成操作摘要
-        let summaryMessage = '已执行以下操作：\n';
-        let hasDelete = false;
-        let hasInsert = false;
-        
-        for (const op of operations) {
-            if (op.type === 'DELETE') {
-                hasDelete = true;
-                if (op.startLine === op.endLine) {
-                    summaryMessage += `- 删除了第${op.startLine}行\n`;
-                } else {
-                    summaryMessage += `- 删除了第${op.startLine}-${op.endLine}行\n`;
-                }
-            } else if (op.type === 'INSERT') {
-                hasInsert = true;
-                summaryMessage += `- 在第${op.lineNumber}行插入了代码\n`;
-            }
-        }
-        
-        if (!hasDelete && !hasInsert) {
-            summaryMessage = '已处理AI响应';
-        }
-        
-        // 显示成功提示
-        showDialog({
-            title: '操作完成',
-            message: summaryMessage
-        });
-    } catch (error) {
-        console.error('代码操作错误:', error);
-        showDialog({
-            title: '操作失败',
-            message: '解析或应用AI代码操作时发生错误'
-        });
-    }
 } 
