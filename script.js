@@ -1206,10 +1206,6 @@ function showAiPromptDialog(selection, selectedCode) {
     // 创建输入框HTML
     const inputHtml = `
         <div style="margin-bottom: 10px;">请输入您的需求，可指定操作类型：</div>
-        <ul style="margin-bottom: 10px; padding-left: 20px; color: ${currentTheme === 'vs' ? '#555' : '#aaa'}; font-size: 12px;">
-            <li>插入代码：例如"在第3行插入打印语句"</li>
-            <li>删除代码：例如"删除第5行代码"或"删除第5-8行代码"</li>
-        </ul>
         <textarea id="ai-prompt-input" style="width: 100%; height: 80px; padding: 8px; box-sizing: border-box; border: 1px solid ${currentTheme === 'vs' ? '#ccc' : '#3c3c3c'}; border-radius: 3px; background-color: ${currentTheme === 'vs' ? '#fff' : '#1e1e1e'}; color: ${currentTheme === 'vs' ? '#333' : '#ccc'}; font-family: 'JetBrains Mono', monospace; resize: none;"></textarea>
     `;
     
