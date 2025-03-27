@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeryStupidCode</title>
+    <link rel="icon" href="https://code.visualstudio.com/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="https://code.visualstudio.com/favicon.ico" type="image/x-icon">
+    <!-- 引入JetBrains Mono字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            font-family: "JetBrains Mono", monospace, "Microsoft YaHei", sans-serif;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        /* 顶部文件栏样式 */
+        #tabs-container {
+            height: 32px;
+            min-height: 32px;
+            background-color: #f3f3f3;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        .vs-dark #tabs-container {
+            background-color: #252526;
+            border-bottom: 1px solid #1e1e1e;
+            scrollbar-color: #555 transparent;
+        }
+        #tabs-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .tab {
+            padding: 0 12px;
+            height: 100%;
+            display: inline-flex;
+            align-items: center;
+            border-right: 1px solid #e0e0e0;
+            cursor: pointer;
+            user-select: none;
+            background-color: #ececec;
+            font-size: 13px;
+        }
+        .vs-dark .tab {
+            border-right: 1px solid #1e1e1e;
+            background-color: #2d2d2d;
+            color: #cccccc;
+        }
+        .tab.active {
+            background-color: #ffffff;
+            border-top: 2px solid #007acc;
+            position: relative;
+            top: 1px;
+        }
+        .vs-dark .tab.active {
+            background-color: #1e1e1e;
+            border-top: 2px solid #007acc;
+        }
+        .tab-icon {
+            margin-right: 5px;
+            font-size: 13px;
+        }
+        .tab-close {
+            margin-left: 8px;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        .tab-close:hover {
+            opacity: 1;
+        }
+        .new-file-area {
+            flex-grow: 1;
+            height: 100%;
+            cursor: pointer;
+        }
+        #editor-container {
+            flex-grow: 1;
+            position: relative;
+            padding-top: 8px;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        .vs-dark #editor-container {
+            background-color: #1e1e1e;
+        }
+        #statusbar {
+            height: 22px;
+            min-height: 22px;
+            background-color: #f3f3f3;
+            color: #333;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            user-select: none;
+            border-top: 1px solid #e0e0e0;
+            font-family: "JetBrains Mono", monospace;
+            z-index: 10;
+            flex-shrink: 0;
+            gap: 1px;
+        }
+        .vs-dark #statusbar {
+            background-color: #1e1e1e;
+            color: #ccc;
+            border-top: 1px solid #333;
+        }
+        #code-icon {
+            background-color: #007acc;
+            color: white;
+            padding: 0 10px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #theme-status, #language-status {
+            cursor: pointer;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+        #theme-status:hover, #language-status:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        .vs-dark #theme-status:hover, .vs-dark #language-status:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        #download-button {
+            cursor: pointer;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+        #notification {
+            margin-left: auto;
+            padding: 0 10px;
+            cursor: pointer;
+        }
+        #new-file-button {
+            padding: 0 10px;
+            cursor: pointer;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+        }
+        #new-file-button:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        .vs-dark #new-file-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        #ai-status {
+            padding: 0 10px;
+            cursor: pointer;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+        }
+        #ai-status:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+            color: #007acc;
+        }
+        .vs-dark #ai-status {
+            color: #999;
+        }
+        .vs-dark #ai-status:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #007acc;
+        }
+        .icon {
+            font-size: 14px;
+            margin-right: 4px;
+        }
+
+        /* 自定义弹窗样式 */
+        #custom-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #custom-dialog {
+            background-color: #f3f3f3;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            width: 400px;
+            max-width: 90%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: dialogFadeIn 0.15s ease-out;
+        }
+        .vs-dark #custom-dialog {
+            background-color: #252526;
+            color: #cccccc;
+            border: 1px solid #3c3c3c;
+        }
+        #dialog-header {
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .vs-dark #dialog-header {
+            border-bottom: 1px solid #3c3c3c;
+        }
+        #dialog-title {
+            flex-grow: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        #dialog-close {
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        #dialog-close:hover {
+            opacity: 1;
+        }
+        #dialog-content {
+            padding: 15px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        #dialog-buttons {
+            padding: 10px 15px;
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid #e0e0e0;
+        }
+        .vs-dark #dialog-buttons {
+            border-top: 1px solid #3c3c3c;
+        }
+        .dialog-button {
+            padding: 6px 12px;
+            margin-left: 8px;
+            border: none;
+            border-radius: 2px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        .vs-dark .dialog-button {
+            background-color: #3c3c3c;
+            color: #cccccc;
+        }
+        .dialog-button:hover {
+            background-color: #d0d0d0;
+        }
+        .vs-dark .dialog-button:hover {
+            background-color: #505050;
+        }
+        .dialog-button.primary {
+            background-color: #007acc;
+            color: white;
+        }
+        .dialog-button.primary:hover {
+            background-color: #0062a3;
+        }
+        @keyframes dialogFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* AI处理中的样式 */
+        body.ai-processing #editor-container {
+            position: relative;
+        }
+        body.ai-processing #editor-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.05);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .vs-dark body.ai-processing #editor-container::after {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+        body.ai-processing #ai-status {
+            color: #ff6b00;
+            animation: ai-processing-pulse 1.5s infinite;
+        }
+        @keyframes ai-processing-pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="tabs-container">
+            <div class="tab active" data-language="python">
+                <span class="tab-icon"><i class="fa-brands fa-python"></i></span>
+                <span class="tab-name">example.py</span>
+                <span class="tab-close"><i class="fa-solid fa-xmark"></i></span>
+            </div>
+            <div class="new-file-area" id="new-file-area"></div>
+        </div>
+        <div id="editor-container"></div>
+        <div id="statusbar">
+            <div id="code-icon"><i class="fa-solid fa-code"></i></div>
+            <div id="ai-status" title="AI辅助编码">AI 辅助编码</div>
+            <div id="theme-status"><span class="icon">&#9681;</span>当前主题: 亮色</div>
+            <div id="language-status">Python</div>
+            <div id="download-button" title="下载当前文件"><i class="fa-solid fa-download"></i></div>
+            <div id="notification"><i class="fa-solid fa-bell"></i></div>
+            <div id="new-file-button" title="创建新文件"><i class="fa-solid fa-plus"></i></div>
+        </div>
+    </div>
+
+    <!-- 自定义弹窗 -->
+    <div id="custom-dialog-overlay">
+        <div id="custom-dialog">
+            <div id="dialog-header">
+                <div id="dialog-title">提示</div>
+                <div id="dialog-close"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div id="dialog-content">消息内容</div>
+            <div id="dialog-buttons">
+                <button class="dialog-button primary" id="dialog-ok">确定</button>
+                <button class="dialog-button" id="dialog-cancel" style="display: none;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/loader.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 
