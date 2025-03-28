@@ -1555,6 +1555,7 @@ function getExecutionPrompt(code, language, userInput) {
 1. 解析用户提供的代码
 2. 执行代码（如有用户输入，使用提供的输入）
 3. 返回执行结果
+4. 请勿使用markdown包裹代码，直接返回代码即可
 
 请遵循以下规则：
 - 只返回代码的实际输出结果
