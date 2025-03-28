@@ -7,9 +7,9 @@ require.config({
 
 // AI配置
 const AI_CONFIG = {
-    apiKey: 'sk-91g5VZZfJOOVlm9OppDT3GrMk0T5qlSFboEOMZamiKIaEvJg',
+    apiKey: 'sk-L6kOE4pyrPrOTkrbMQslrYX4tZXPdWhbhy7NbkH4UQmHgmuj',
     baseUrl: 'https://api.gptgod.online/v1/chat/completions',
-    model: 'gpt-4o-mini'
+    model: 'gemini-2.0-flash-exp'
 };
 
 // 定义Monaco Editor变量
@@ -236,6 +236,15 @@ function initializeEditor() {
             saveFilesToStorage();
         }
     });
+    
+    // 从本地存储加载文件
+    loadFilesFromStorage();
+    
+    // 设置事件监听器
+    setupEventListeners();
+    
+    // 初始化运行按钮可见性
+    updateRunButtonVisibility();
 }
 
 // 设置事件监听器
@@ -352,12 +361,19 @@ function setupEventListeners() {
    - 可以要求AI添加解释性注释（例如："添加注释解释这段代码的工作原理"）
    - AI将返回完整的修改后代码
 
-4. 快捷键
+4. 运行代码
+   - 支持Python、C和HTML代码运行
+   - 点击底部状态栏中的运行按钮(▶)
+   - Python/C代码可输入参数后运行
+   - HTML文件将在新窗口中预览
+   - 运行结果由AI模拟输出
+
+5. 快捷键
    - Ctrl + N：新建文件
    - Ctrl + W：关闭当前文件
    - Ctrl + S：保存文件
 
-5. 其他功能
+6. 其他功能
    - 支持语法高亮
    - 支持代码自动补全
    - 支持多语言切换
@@ -432,6 +448,22 @@ function setupEventListeners() {
         // 清理
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+    });
+    
+    // 添加运行代码按钮事件
+    document.getElementById('run-code-button').addEventListener('click', () => {
+        // 检查当前文件类型是否支持运行
+        const currentFile = openFiles[activeFileIndex];
+        const currentLanguage = currentFile.language;
+        
+        if (['python', 'c', 'html'].includes(currentLanguage)) {
+            runCode();
+        } else {
+            showDialog({
+                title: '不支持的语言',
+                message: '目前只支持运行Python、C和HTML代码。'
+            });
+        }
     });
 }
 
@@ -714,6 +746,9 @@ function updateUI() {
     
     // 更新语言状态
     updateLanguageStatus();
+    
+    // 更新运行按钮显示
+    updateRunButtonVisibility();
 }
 
 // 更新标签栏
@@ -1319,13 +1354,9 @@ function processAiRequest(prompt, selectedCode, selection, completeCode, origina
 3. 返回修改后的完整代码文件
 
 若用户要求解释代码或添加说明，请使用代码注释来提供解释。根据编程语言选择合适的注释格式：
-- Python: 使用 # 或 """...""" 
-- C/C++: 使用 // 或 /*...*/
-- HTML: 使用 <!--...-->
-- JavaScript: 使用 // 或 /*...*/
 
 请直接返回完整的代码，不要包含任何额外的解释或说明。
-不要使用代码块标记（\`\`\`），直接返回代码。`
+不要使用 Markdown 代码块标记（\`\`\`），直接返回代码。`
             },
             {
                 role: "user",
@@ -1337,7 +1368,7 @@ ${selectedCode}
 
 我想要：${prompt}
 
-请直接返回修改后的完整代码文件，不要包含任何其他解释。`
+请直接返回修改后的完整代码文件，不要包含任何其他解释。一定不要使用 Markdown 代码块包裹代码，直接输出代码。`
             }
         ],
         temperature: 0.7
@@ -1392,4 +1423,229 @@ ${selectedCode}
         window.aiProcessing = false;
         document.body.classList.remove('ai-processing');
     });
+}
+
+// 运行代码功能
+function runCode() {
+    // 获取当前文件信息
+    const currentFile = openFiles[activeFileIndex];
+    const currentLanguage = currentFile.language;
+    
+    // 只支持Python、C和HTML
+    if (!['python', 'c', 'html'].includes(currentLanguage)) {
+        showDialog({
+            title: '不支持的语言',
+            message: '目前只支持运行Python、C和HTML代码。'
+        });
+        return;
+    }
+    
+    // 获取当前代码
+    const code = editor.getValue();
+    
+    // 处理HTML直接显示
+    if (currentLanguage === 'html') {
+        // 创建一个新窗口并显示HTML
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+            newWindow.document.write(code);
+            newWindow.document.close();
+        } else {
+            showDialog({
+                title: '无法预览',
+                message: '浏览器阻止了弹出窗口，请允许弹出窗口后重试。'
+            });
+        }
+        return;
+    }
+    
+    // 对于Python和C代码，显示输入提示对话框
+    const inputHtml = `
+        <div style="margin-bottom: 10px;">如有输入，请在此进行输入（每行一个）：</div>
+        <textarea id="code-input" style="width: 100%; height: 80px; padding: 8px; box-sizing: border-box; border: 1px solid ${currentTheme === 'vs' ? '#ccc' : '#3c3c3c'}; border-radius: 3px; background-color: ${currentTheme === 'vs' ? '#fff' : '#1e1e1e'}; color: ${currentTheme === 'vs' ? '#333' : '#ccc'}; font-family: 'JetBrains Mono', monospace; resize: none;"></textarea>
+    `;
+    
+    showDialog({
+        title: '运行代码',
+        message: inputHtml,
+        showCancel: true,
+        okText: '运行',
+        cancelText: '取消',
+        onOk: () => {
+            const inputElement = document.getElementById('code-input');
+            let userInput = '';
+            if (inputElement) {
+                userInput = inputElement.value.trim();
+            }
+            
+            // 显示加载状态
+            const runButton = document.getElementById('run-code-button');
+            const originalInnerHTML = runButton.innerHTML;
+            runButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            
+            // 发送到AI执行代码
+            executeCodeWithAI(code, currentLanguage, userInput)
+                .then(result => {
+                    // 显示结果
+                    showCodeExecutionResult(result);
+                })
+                .catch(error => {
+                    showDialog({
+                        title: '执行失败',
+                        message: `运行代码时发生错误：${error.message}`
+                    });
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    runButton.innerHTML = originalInnerHTML;
+                });
+        }
+    });
+}
+
+// 使用AI执行代码
+async function executeCodeWithAI(code, language, userInput) {
+    // 构建请求体
+    const prompt = getExecutionPrompt(code, language, userInput);
+    
+    const requestBody = {
+        model: AI_CONFIG.model,
+        messages: [
+            {
+                role: "system",
+                content: prompt.system
+            },
+            {
+                role: "user",
+                content: prompt.user
+            }
+        ],
+        temperature: 0.2
+    };
+    
+    // 发送请求
+    const response = await fetch(AI_CONFIG.baseUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+        },
+        body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP错误：${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // 提取AI回复
+    if (data.choices && data.choices.length > 0) {
+        return data.choices[0].message.content.trim();
+    } else {
+        throw new Error('未收到有效的AI回复');
+    }
+}
+
+// 获取执行代码的提示词
+function getExecutionPrompt(code, language, userInput) {
+    // 基础系统提示
+    let systemPrompt = `你是一个代码执行引擎，专门执行${language === 'python' ? 'Python' : language === 'c' ? 'C' : 'HTML'}代码并返回运行结果。
+你的任务是：
+1. 解析用户提供的代码
+2. 执行代码（如有用户输入，使用提供的输入）
+3. 返回执行结果
+
+请遵循以下规则：
+- 只返回代码的实际输出结果
+- 不要包含解释、分析或额外评论
+- 如果代码有错误，返回详细的错误信息
+- 格式应简洁清晰，与真实编译器/解释器输出一致`;
+
+    if (language === 'python') {
+        systemPrompt += `\n\n对于Python代码：
+- 模拟Python 3.9解释器的行为
+- 支持标准库函数
+- 处理print()输出、异常和标准输入`;
+    } else if (language === 'c') {
+        systemPrompt += `\n\n对于C代码：
+- 模拟gcc编译器的行为
+- 支持标准C库函数
+- 处理printf()输出、编译错误和运行时错误
+- 支持命令行参数和标准输入`;
+    }
+
+    // 用户提示（包含代码和输入）
+    let userPrompt = `请执行以下${language === 'python' ? 'Python' : language === 'c' ? 'C' : 'HTML'}代码：\n\n\`\`\`${language}\n${code}\n\`\`\``;
+    
+    if (userInput) {
+        userPrompt += `\n\n用户输入（每行一个）：\n${userInput}`;
+    }
+    
+    return {
+        system: systemPrompt,
+        user: userPrompt
+    };
+}
+
+// 显示代码执行结果
+function showCodeExecutionResult(result) {
+    // 创建结果弹窗
+    const resultHtml = `
+        <div style="margin-bottom: 10px;">执行结果：</div>
+        <pre style="width: 100%; max-height: 300px; padding: 8px; box-sizing: border-box; border: 1px solid ${currentTheme === 'vs' ? '#ccc' : '#3c3c3c'}; border-radius: 3px; background-color: ${currentTheme === 'vs' ? '#f5f5f5' : '#1e1e1e'}; color: ${currentTheme === 'vs' ? '#333' : '#ccc'}; font-family: 'JetBrains Mono', monospace; overflow: auto; white-space: pre-wrap;">${result}</pre>
+    `;
+    
+    showDialog({
+        title: '代码执行结果',
+        message: resultHtml,
+        showCancel: false,
+        okText: '关闭'
+    });
+}
+
+// 更新运行按钮显示状态
+function updateRunButtonVisibility() {
+    const runButton = document.getElementById('run-code-button');
+    if (runButton) {
+        const currentFile = openFiles[activeFileIndex];
+        const currentLanguage = currentFile.language;
+        
+        if (['python', 'c', 'html'].includes(currentLanguage)) {
+            runButton.style.display = 'flex';
+        } else {
+            runButton.style.display = 'none';
+        }
+    }
+}
+
+// 切换到指定文件
+function switchFile(index) {
+    if (index >= 0 && index < openFiles.length) {
+        // 更新activeFileIndex
+        activeFileIndex = index;
+        
+        // 更新编辑器内容和语言
+        editor.setValue(openFiles[index].content);
+        monaco.editor.setModelLanguage(editor.getModel(), openFiles[index].language);
+        
+        // 更新标签样式
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach((tab, i) => {
+            if (i === index) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        
+        // 更新语言状态
+        updateLanguageStatus();
+        
+        // 更新运行按钮显示
+        updateRunButtonVisibility();
+        
+        // 保存到本地存储
+        saveFilesToStorage();
+    }
 } 

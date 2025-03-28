@@ -156,6 +156,23 @@
             align-items: center;
             height: 100%;
         }
+        #run-code-button {
+            cursor: pointer;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            height: 100%;
+            color: #28a745;
+        }
+        #run-code-button:hover {
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        .vs-dark #run-code-button {
+            color: #33c555;
+        }
+        .vs-dark #run-code-button:hover {
+            background-color: rgba(51, 197, 85, 0.1);
+        }
         #notification {
             margin-left: auto;
             padding: 0 10px;
@@ -376,6 +393,7 @@
             <div id="ai-status" title="AI辅助编码">AI 辅助编码</div>
             <div id="theme-status"><span class="icon">&#9681;</span>当前主题: 亮色</div>
             <div id="language-status">Python</div>
+            <div id="run-code-button" title="运行代码"><i class="fa-solid fa-play"></i></div>
             <div id="download-button" title="下载当前文件"><i class="fa-solid fa-download"></i></div>
             <div id="notification"><i class="fa-solid fa-bell"></i></div>
             <div id="new-file-button" title="创建新文件"><i class="fa-solid fa-plus"></i></div>
