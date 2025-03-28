@@ -24,81 +24,76 @@ const languageMap = {
     'py': 'python',
     'c': 'c',
     'h': 'c',
+    'cpp': 'cpp',
+    'cc': 'cpp',
+    'hpp': 'cpp',
     'html': 'html',
-    'htm': 'html'
+    'htm': 'html',
+    'js': 'javascript',
+    'jsx': 'javascript',
+    'ts': 'typescript',
+    'tsx': 'typescript',
+    'css': 'css',
+    'scss': 'scss',
+    'less': 'less',
+    'json': 'json',
+    'md': 'markdown',
+    'markdown': 'markdown',
+    'php': 'php',
+    'go': 'go',
+    'java': 'java',
+    'rb': 'ruby',
+    'ruby': 'ruby',
+    'swift': 'swift',
+    'kt': 'kotlin',
+    'rs': 'rust',
+    'sql': 'sql',
+    'sh': 'shell',
+    'bash': 'shell',
+    'yaml': 'yaml',
+    'yml': 'yaml',
+    'xml': 'xml',
+    'cs': 'csharp',
+    'vb': 'vb',
+    'lua': 'lua',
+    'pl': 'perl',
+    'r': 'r'
 };
 
 // 语言和图标映射
 const languageIcons = {
     'python': '<i class="fa-brands fa-python"></i>',
     'c': '<i class="fa-solid fa-copyright"></i>',
-    'html': '<i class="fa-brands fa-html5"></i>'
+    'cpp': '<i class="fa-solid fa-c"></i>',
+    'html': '<i class="fa-brands fa-html5"></i>',
+    'javascript': '<i class="fa-brands fa-js"></i>',
+    'typescript': '<i class="fa-brands fa-js"></i>',
+    'css': '<i class="fa-brands fa-css3-alt"></i>',
+    'scss': '<i class="fa-brands fa-sass"></i>',
+    'less': '<i class="fa-brands fa-css3"></i>',
+    'json': '<i class="fa-solid fa-code"></i>',
+    'markdown': '<i class="fa-brands fa-markdown"></i>',
+    'php': '<i class="fa-brands fa-php"></i>',
+    'go': '<i class="fa-solid fa-g"></i>',
+    'java': '<i class="fa-brands fa-java"></i>',
+    'ruby': '<i class="fa-solid fa-gem"></i>',
+    'swift': '<i class="fa-solid fa-s"></i>',
+    'kotlin': '<i class="fa-solid fa-k"></i>',
+    'rust': '<i class="fa-solid fa-r"></i>',
+    'sql': '<i class="fa-solid fa-database"></i>',
+    'shell': '<i class="fa-solid fa-terminal"></i>',
+    'yaml': '<i class="fa-solid fa-file-code"></i>',
+    'xml': '<i class="fa-solid fa-code"></i>',
+    'csharp': '<i class="fa-solid fa-hashtag"></i>',
+    'vb': '<i class="fa-solid fa-v"></i>',
+    'lua': '<i class="fa-solid fa-moon"></i>',
+    'perl': '<i class="fa-solid fa-p"></i>',
+    'r': '<i class="fa-solid fa-r"></i>'
 };
 
 // 示例代码
 const sampleCodes = {
-    'python': `def greeting(name):
-    """
-    一个简单的问候函数
-    """
-    return f"你好，{name}！"
-
-# 测试函数
-message = greeting("世界")
-print(message)
-
-class Person:
-    def __init__(self, name, age):
-        self.name = name
-        self.age = age
-    
-    def introduce(self):
-        return f"我叫{self.name}，今年{self.age}岁"
-`,
-    'c': `#include <stdio.h>
-
-/**
- * 一个简单的问候函数
- */
-void greeting(const char* name) {
-    printf("你好，%s！\\n", name);
-}
-
-int main() {
-    // 测试函数
-    greeting("世界");
-    
-    return 0;
-}`,
-    'html': `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML示例</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #333;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>你好，世界！</h1>
-        <p>这是一个简单的HTML示例页面。</p>
-    </div>
-</body>
-</html>`
+    'default': '// 开始编码吧！'
 };
 
 // 当前打开的所有文件
@@ -110,6 +105,10 @@ let openFiles = [{
 
 // 当前活动的文件索引
 let activeFileIndex = 0;
+
+// 添加代码阅读动画效果变量
+let codeReadingAnimationInterval = null;
+let currentHighlightedLine = 1;
 
 // 加载Monaco编辑器
 require(['vs/editor/editor.main'], function() {
@@ -192,7 +191,7 @@ function resetToDefaultFiles() {
     openFiles = [{
         name: 'example.py',
         language: 'python',
-        content: sampleCodes['python']
+        content: sampleCodes['default'] || '// 开始编码吧！'
     }];
     activeFileIndex = 0;
     currentLanguage = 'python';
@@ -456,12 +455,12 @@ function setupEventListeners() {
         const currentFile = openFiles[activeFileIndex];
         const currentLanguage = currentFile.language;
         
-        if (['python', 'c', 'html'].includes(currentLanguage)) {
+        if (['python', 'c', 'cpp', 'javascript', 'html', 'java', 'ruby', 'go', 'php', 'csharp', 'shell', 'rust', 'swift', 'kotlin'].includes(currentLanguage)) {
             runCode();
         } else {
             showDialog({
                 title: '不支持的语言',
-                message: '目前只支持运行Python、C和HTML代码。'
+                message: '目前只支持运行 Python、C、C++、JavaScript、HTML、Java、Ruby、Go、PHP、C#、Shell、Rust、Swift 和 Kotlin 代码。'
             });
         }
     });
@@ -645,7 +644,7 @@ function handleUntitledFileRename(fileName) {
     openFiles[activeFileIndex] = {
         name: fileName,
         language: language,
-        content: sampleCodes[language] || ''
+        content: sampleCodes['default'] || '// 开始编码吧！'
     };
     
     // 更新编辑器和UI
@@ -671,7 +670,7 @@ function confirmNewFile(fileName) {
     openFiles.push({
         name: fileName,
         language: language,
-        content: sampleCodes[language] || ''
+        content: sampleCodes['default'] || '// 开始编码吧！'
     });
     
     // 激活新文件
@@ -1315,17 +1314,104 @@ function disableUIElementsDuringAIProcessing(disable) {
                 overlay.style.left = '0';
                 overlay.style.right = '0';
                 overlay.style.bottom = '0';
-                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
                 overlay.style.zIndex = '10';
                 overlay.style.pointerEvents = 'none'; // 允许鼠标操作
                 
                 editorContainer.appendChild(overlay);
             }
+            
+            // 启动代码阅读动画
+            startCodeReadingAnimation();
         } else {
             const overlay = document.getElementById('ai-processing-overlay');
             if (overlay) {
                 editorContainer.removeChild(overlay);
             }
+            
+            // 停止代码阅读动画
+            stopCodeReadingAnimation();
+        }
+    }
+}
+
+// 启动代码阅读动画
+function startCodeReadingAnimation() {
+    // 确保停止任何现有的动画
+    stopCodeReadingAnimation();
+    
+    // 获取当前编辑器模型
+    const model = editor.getModel();
+    if (!model) return;
+    
+    // 获取总行数
+    const lineCount = model.getLineCount();
+    if (lineCount <= 0) return;
+    
+    // 重置当前高亮行
+    currentHighlightedLine = 1;
+    
+    // 创建动画间隔
+    codeReadingAnimationInterval = setInterval(() => {
+        // 清除所有之前的装饰
+        editor.deltaDecorations([], []);
+        
+        // 创建新的装饰 - 主行和前后行的梯度效果
+        const decorations = [];
+        
+        // 当前行 - 主要高亮
+        decorations.push({
+            range: new monaco.Range(currentHighlightedLine, 1, currentHighlightedLine, model.getLineMaxColumn(currentHighlightedLine)),
+            options: {
+                isWholeLine: true,
+                className: currentTheme === 'vs' ? 'code-reading-highlight-light' : 'code-reading-highlight-dark'
+            }
+        });
+        
+        // 前一行 - 淡化高亮
+        if (currentHighlightedLine > 1) {
+            decorations.push({
+                range: new monaco.Range(currentHighlightedLine - 1, 1, currentHighlightedLine - 1, model.getLineMaxColumn(currentHighlightedLine - 1)),
+                options: {
+                    isWholeLine: true,
+                    className: currentTheme === 'vs' ? 'code-reading-highlight-light-fade' : 'code-reading-highlight-dark-fade'
+                }
+            });
+        }
+        
+        // 后一行 - 淡化高亮
+        if (currentHighlightedLine < lineCount) {
+            decorations.push({
+                range: new monaco.Range(currentHighlightedLine + 1, 1, currentHighlightedLine + 1, model.getLineMaxColumn(currentHighlightedLine + 1)),
+                options: {
+                    isWholeLine: true,
+                    className: currentTheme === 'vs' ? 'code-reading-highlight-light-fade' : 'code-reading-highlight-dark-fade'
+                }
+            });
+        }
+        
+        // 应用装饰
+        editor.deltaDecorations([], decorations);
+        
+        // 确保高亮行在视图中可见，使用平滑滚动
+        editor.revealLineInCenterIfOutsideViewport(currentHighlightedLine, monaco.editor.ScrollType.Smooth);
+        
+        // 移动到下一行，如果到达末尾则重新开始
+        currentHighlightedLine++;
+        if (currentHighlightedLine > lineCount) {
+            currentHighlightedLine = 1;
+        }
+    }, 150); // 调整为每150毫秒高亮下一行，稍微放慢速度使效果更明显
+}
+
+// 停止代码阅读动画
+function stopCodeReadingAnimation() {
+    if (codeReadingAnimationInterval) {
+        clearInterval(codeReadingAnimationInterval);
+        codeReadingAnimationInterval = null;
+        
+        // 清除所有装饰
+        if (editor) {
+            editor.deltaDecorations([], []);
         }
     }
 }
@@ -1394,6 +1480,9 @@ ${selectedCode}
         if (data.choices && data.choices.length > 0) {
             const aiCode = data.choices[0].message.content.trim();
             
+            // 停止代码阅读动画
+            stopCodeReadingAnimation();
+            
             // 直接替换编辑器内容
             editor.setValue(aiCode);
         } else {
@@ -1422,6 +1511,9 @@ ${selectedCode}
         // 移除处理标志和视觉指示
         window.aiProcessing = false;
         document.body.classList.remove('ai-processing');
+        
+        // 确保停止代码阅读动画
+        stopCodeReadingAnimation();
     });
 }
 
@@ -1431,11 +1523,14 @@ function runCode() {
     const currentFile = openFiles[activeFileIndex];
     const currentLanguage = currentFile.language;
     
-    // 只支持Python、C和HTML
-    if (!['python', 'c', 'html'].includes(currentLanguage)) {
+    // 扩展支持运行的语言
+    const runnableLanguages = ['python', 'c', 'cpp', 'javascript', 'html', 'java', 'ruby', 'go', 'php', 'csharp', 'shell', 'rust', 'swift', 'kotlin'];
+    
+    // 只支持指定语言
+    if (!runnableLanguages.includes(currentLanguage)) {
         showDialog({
             title: '不支持的语言',
-            message: '目前只支持运行Python、C和HTML代码。'
+            message: '目前只支持运行 Python、C、C++、JavaScript、HTML、Java、Ruby、Go、PHP、C#、Shell、Rust、Swift 和 Kotlin 代码。'
         });
         return;
     }
@@ -1459,7 +1554,7 @@ function runCode() {
         return;
     }
     
-    // 对于Python和C代码，显示输入提示对话框
+    // 对于其他代码，显示输入提示对话框
     const inputHtml = `
         <div style="margin-bottom: 10px;">如有输入，请在此进行输入（每行一个）：</div>
         <textarea id="code-input" style="width: 100%; height: 80px; padding: 8px; box-sizing: border-box; border: 1px solid ${currentTheme === 'vs' ? '#ccc' : '#3c3c3c'}; border-radius: 3px; background-color: ${currentTheme === 'vs' ? '#fff' : '#1e1e1e'}; color: ${currentTheme === 'vs' ? '#333' : '#ccc'}; font-family: 'JetBrains Mono', monospace; resize: none;"></textarea>
@@ -1550,12 +1645,11 @@ async function executeCodeWithAI(code, language, userInput) {
 // 获取执行代码的提示词
 function getExecutionPrompt(code, language, userInput) {
     // 基础系统提示
-    let systemPrompt = `你是一个代码执行引擎，专门执行${language === 'python' ? 'Python' : language === 'c' ? 'C' : 'HTML'}代码并返回运行结果。
+    let systemPrompt = `你是一个代码执行引擎，专门执行${language}代码并返回运行结果。
 你的任务是：
 1. 解析用户提供的代码
 2. 执行代码（如有用户输入，使用提供的输入）
 3. 返回执行结果
-4. 请勿使用markdown包裹代码，直接返回代码即可
 
 请遵循以下规则：
 - 只返回代码的实际输出结果
@@ -1563,21 +1657,62 @@ function getExecutionPrompt(code, language, userInput) {
 - 如果代码有错误，返回详细的错误信息
 - 格式应简洁清晰，与真实编译器/解释器输出一致`;
 
-    if (language === 'python') {
-        systemPrompt += `\n\n对于Python代码：
+    // 根据不同语言添加特定提示
+    const languageSpecificPrompts = {
+        'python': `\n\n对于Python代码：
 - 模拟Python 3.9解释器的行为
 - 支持标准库函数
-- 处理print()输出、异常和标准输入`;
-    } else if (language === 'c') {
-        systemPrompt += `\n\n对于C代码：
+- 处理print()输出、异常和标准输入`,
+        'c': `\n\n对于C代码：
 - 模拟gcc编译器的行为
 - 支持标准C库函数
 - 处理printf()输出、编译错误和运行时错误
-- 支持命令行参数和标准输入`;
+- 支持命令行参数和标准输入`,
+        'cpp': `\n\n对于C++代码：
+- 模拟g++编译器的行为
+- 支持标准C++库函数和STL
+- 处理cout输出、编译错误和运行时错误`,
+        'javascript': `\n\n对于JavaScript代码：
+- 模拟Node.js环境
+- 支持ES6+特性
+- 处理console.log输出和异常`,
+        'java': `\n\n对于Java代码：
+- 模拟JDK环境
+- 支持Java标准库
+- 处理System.out.println输出和异常`,
+        'ruby': `\n\n对于Ruby代码：
+- 模拟Ruby解释器
+- 处理puts输出和异常`,
+        'go': `\n\n对于Go代码：
+- 模拟Go编译器和运行时
+- 处理fmt.Println输出和错误`,
+        'php': `\n\n对于PHP代码：
+- 模拟PHP解释器
+- 处理echo/print输出和错误`,
+        'csharp': `\n\n对于C#代码：
+- 模拟.NET环境
+- 处理Console.WriteLine输出和异常`,
+        'shell': `\n\n对于Shell脚本：
+- 模拟Bash环境
+- 处理命令输出和错误`,
+        'rust': `\n\n对于Rust代码：
+- 模拟Rust编译器
+- 处理println!输出和错误`,
+        'swift': `\n\n对于Swift代码：
+- 模拟Swift编译器
+- 处理print输出和错误`,
+        'kotlin': `\n\n对于Kotlin代码：
+- 模拟Kotlin JVM环境
+- 处理println输出和异常`
+    };
+
+    // 添加特定语言的提示（如果存在）
+    if (languageSpecificPrompts[language]) {
+        systemPrompt += languageSpecificPrompts[language];
     }
 
     // 用户提示（包含代码和输入）
-    let userPrompt = `请执行以下${language === 'python' ? 'Python' : language === 'c' ? 'C' : 'HTML'}代码：\n\n\`\`\`${language}\n${code}\n\`\`\``;
+    let userPrompt = `请执行以下${language}代码：\n\n\`\`\`${language}\n${code}\n\`\`\``;
     
     if (userInput) {
         userPrompt += `\n\n用户输入（每行一个）：\n${userInput}`;
@@ -1612,7 +1747,10 @@ function updateRunButtonVisibility() {
         const currentFile = openFiles[activeFileIndex];
         const currentLanguage = currentFile.language;
         
-        if (['python', 'c', 'html'].includes(currentLanguage)) {
+        // 扩展支持运行的语言列表
+        const runnableLanguages = ['python', 'c', 'cpp', 'javascript', 'html', 'java', 'ruby', 'go', 'php', 'csharp', 'shell', 'rust', 'swift', 'kotlin'];
+        
+        if (runnableLanguages.includes(currentLanguage)) {
             runButton.style.display = 'flex';
         } else {
             runButton.style.display = 'none';

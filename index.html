@@ -350,6 +350,28 @@
             100% { opacity: 0.5; }
         }
 
+        /* 代码阅读高亮样式 */
+        .code-reading-highlight-light {
+            background-color: rgba(144, 238, 144, 0.3) !important; /* 浅绿色背景，亮色主题 */
+            transition: background-color 0.05s ease;
+        }
+        
+        .code-reading-highlight-dark {
+            background-color: rgba(144, 238, 144, 0.15) !important; /* 浅绿色背景，深色主题 */
+            transition: background-color 0.05s ease;
+        }
+        
+        /* 前后行的淡化高亮 */
+        .code-reading-highlight-light-fade {
+            background-color: rgba(144, 238, 144, 0.1) !important; /* 更淡的浅绿色背景，亮色主题 */
+            transition: background-color 0.05s ease;
+        }
+        
+        .code-reading-highlight-dark-fade {
+            background-color: rgba(144, 238, 144, 0.05) !important; /* 更淡的浅绿色背景，深色主题 */
+            transition: background-color 0.05s ease;
+        }
+
         /* AI处理状态样式 */
         .ai-processing .monaco-editor {
             cursor: default !important;
